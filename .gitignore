@@ -1,0 +1,17 @@
+.dub
+.dub/*
+docs.json
+__dummy.html
+*.o
+*.obj
+__test__*__
+
+*
+
+!dub.json
+!.gitignore
+!.gitmodules
+!*.d
+!*.py
+
+!README.md
