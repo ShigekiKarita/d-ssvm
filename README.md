@@ -4,6 +4,14 @@ WIP
 
 dlang (and mir) implementation of structural SVM (SSVM)
 
+```
+$ cd res; python digits.py; cd ..
+Score with pystruct subgradient ssvm: 0.857778 (took 11.426986 seconds)
+Score with sklearn and libsvm: 0.920000 (took 0.069885 seconds)
+$ dub 
+Score with d-ssvm subgradient ssvm: 1.000000 (took 0.131741 seconds)
+```
+
 
 ### DONE
 

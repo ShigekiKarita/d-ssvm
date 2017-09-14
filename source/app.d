@@ -165,6 +165,9 @@ class SubgradientOptimizer(alias SSVM) {
 
 
 void main() {
+    import std.datetime : StopWatch;
+    import std.format : format;
+
     // FIXME: add bias by stacking ones to input
     // first, run python res/digits.py
     // TODO: create from here https://github.com/pystruct/pystruct/blob/master/examples/plot_binary_svm.py
@@ -181,12 +184,12 @@ void main() {
     const numClass = 2;
 
     auto model = new BinarySVM!()(numFeature, numClass, 10.0);
-    writeln("risk: ", model.risk(testInput, testTarget));
-    writeln("accuracy: ", model.evaluate(testInput, testTarget));
-
     auto optimizer = new SubgradientOptimizer!(typeof(model))(model);
-    optimizer.fit(trainInput, trainTarget);
 
-    writeln("risk: ", model.risk(testInput, testTarget));
-    writeln("accuracy: ", model.evaluate(testInput, testTarget));
+    StopWatch sw;
+    sw.start();
+    optimizer.fit(trainInput, trainTarget);
+    auto accuracy = model.evaluate(testInput, testTarget);
+    auto elapsed = cast(double) sw.peek().hnsecs / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
+    "Score with d-ssvm subgradient ssvm: %f (took %f seconds)".format(accuracy, elapsed).writeln;
 }
