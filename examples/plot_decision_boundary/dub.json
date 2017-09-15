@@ -1,0 +1,13 @@
+{
+	"name": "plot_decision_boundary",
+	"authors": [
+		"Shigeki Karita"
+	],
+	"dependencies": {
+		"ggplotd": "~>1.1.4",
+        "d-ssvm": { "path": "../../" }
+	},
+	"description": "d-ssvm example of 2D decision boundary plot",
+	"copyright": "Copyright © 2017, Shigeki Karita",
+	"license": "BSL-1.0"
+}

@@ -1,3 +1,6 @@
+*
+!*/
+
 .dub
 .dub/*
 docs.json
@@ -6,13 +9,13 @@ __dummy.html
 *.obj
 __test__*__
 
-*
 
 !dub.json
 !.gitignore
 !.gitmodules
 !*.d
 !*.py
+!*.png
 
 !README.md
 !LICENSE

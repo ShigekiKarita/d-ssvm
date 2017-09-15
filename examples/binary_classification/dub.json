@@ -1,0 +1,12 @@
+{
+	"name": "binary_classification",
+	"authors": [
+		"Shigeki Karita"
+	],
+    "dependencies": {
+        "d-ssvm": { "path": "../../" }
+    },
+	"description": "d-ssvm example of binary classification for digits (odd/even)",
+	"copyright": "Copyright © 2017, Shigeki Karita",
+	"license": "BSL-1.0"
+}

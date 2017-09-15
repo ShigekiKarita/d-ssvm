@@ -1,11 +1,11 @@
-module ranges;
+module dssvm.ranges;
 
 import mir.ndslice;
 
 
 // TODO: add to numir
 import mir.random.engine.xorshift;
-auto gen = Xorshift(1);
+private auto gen = Xorshift(1);
 
 auto permutation(T...)(T t) {
     import numir.core : arange;
@@ -46,7 +46,7 @@ struct MiniBatchRange {
 
     @property bool empty() {
         return this.isSkipLast
-            ? this.total <= this._consumed + this.batchSize
+            ? this.total < this._consumed + this.batchSize
             : this.total <= this._consumed;
     }
 }
@@ -67,7 +67,19 @@ unittest {
         actual ~= cast(size_t[]) ids.ndarray;
     }
     assert(actual == [[0, 1, 2], [3, 4, 5], [6, 7]]);
+    actual = [];
+    foreach (ids; MiniBatchRange(1, 3, false, false)) {
+        actual ~= cast(size_t[]) ids.ndarray;
+    }
+    assert(actual == [[0]]);
 
+
+    // skip last (total % batchSize) ids
+    actual = [];
+    foreach (ids; MiniBatchRange(6, 3, true, false)) {
+        actual ~= cast(size_t[]) ids.ndarray;
+    }
+    assert(actual == [[0, 1, 2], [3, 4, 5]]);
     actual = [];
     foreach (ids; MiniBatchRange(7, 3, true, false)) {
         actual ~= cast(size_t[]) ids.ndarray;
@@ -78,12 +90,6 @@ unittest {
         actual ~= cast(size_t[]) ids.ndarray;
     }
     assert(actual == [[0, 1, 2], [3, 4, 5]]);
-
-    actual = [];
-    foreach (ids; MiniBatchRange(1, 3, false, false)) {
-        actual ~= cast(size_t[]) ids.ndarray;
-    }
-    assert(actual == [[0]]);
     actual = [];
     foreach (ids; MiniBatchRange(2, 3, true, false)) {
         actual ~= cast(size_t[]) ids.ndarray;
