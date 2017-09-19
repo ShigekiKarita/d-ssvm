@@ -1,4 +1,4 @@
-module dssvm.optimizer;
+module dssvm.cqps;
 
 /++
 
@@ -35,19 +35,29 @@ In this paper p.11 "5  Path-following algorithm for cone QPs",
 import std.stdio : writeln;
 
 import mir.ndslice;
+
 import numir;
 
 
+
 /++
- (Cone) QuadProgramOptimizer solve this
+ LinearProgramSolver
 
- minimize 0.5 x^T P x + q^T x
-
- s.t. G x <= h, A x = b
+ minimize:     c^T x
+ subject to:   A x = b, x >= 0
 
  +/
-struct ConeQuadProgramOptimizer(Float=double) {
-    alias S(size_t n) = Slice!(Contiguous, [n], Float*);
+struct LinearProgramSolver(Float=double) {
+    
+}
+
+
+/++
+ minimize:     0.5 x^T P x + q^T x
+ subject to:   G x <= h, A x = b
+ +/
+struct ConeQuadProgramSolver(Float=double) {
+    alias S(size_t n) = Slice!(Universal, [n], Float*);
     alias Vec = S!1;
     alias Mat = S!2;
 
@@ -57,8 +67,11 @@ struct ConeQuadProgramOptimizer(Float=double) {
     private Vec _s, _x, _y, _z; // iter values
     private Mat _W; // see Sec 4. Nesterov-Todd scaling
     private size_t nvars = 0;
+    private bool isInitialized = false;
 
-    auto init() {
+    ref auto initialize() {
+        assert(!isInitialized);
+
         // validate shapes
         foreach (i, ref s; this.tupleof) {
             static if (isSlice!(typeof(s))) {
@@ -78,23 +91,33 @@ struct ConeQuadProgramOptimizer(Float=double) {
         foreach (i, ref s; this.tupleof) {
             alias S = typeof(s);
             static if (is(S == Vec)) {
-                if (s.empty) { s = zeros!Float(nvars); }
+                if (s.empty) { s = zeros!Float(nvars).universal; }
             }
             static if (is(S == Mat)) {
-                if (s.empty) { s = zeros!Float(nvars, nvars); }
+                if (s.empty) { s = zeros!Float(nvars, nvars).universal; }
             }
         }
+        isInitialized = true;
+        return this;
     }
 
-    auto residual() {
-        // TODO: use stack at eq. 17
-
-        // TODO: use gemm at eq. 17
-
+    auto isOptimal() {
+        
     }
 
-    auto iter() {
+    auto residuals() {
+        // NOTE: stack is renamed to concatenation at eq. 17
+        auto At_Gt = concatenation!1(A.transposed!(0, 1), G.transposed!(0, 1)); // shape: [2, 4]
+        auto At00_Gt00 = At_Gt.pad!"post"(0, [nvars, nvars]); // shape: [6, 4]
+        auto PAG = concatenation!0(P, A, G); // shape: [6, 2]
+        auto PAG_At00_Gt00 = concatenation!1(PAG, At00_Gt00); // shape: [6, 6];
+        return null;
+    }
+
+    auto loop() {
         // TODO: init _s, ..., _z
+        auto rs = this.residuals();
+        // LinearProgramSolver();
     }
 
     auto toString() {
@@ -113,11 +136,36 @@ struct ConeQuadProgramOptimizer(Float=double) {
 
 unittest {
     import numir;
-    ConeQuadProgramOptimizer!double optimizer = {
-    P: iota(2, 2).as!double.slice,
-    b: iota(2).as!double.slice,
+    ConeQuadProgramSolver!double cqps = {
+    P: iota(2, 2).as!double.slice.universal,
+    b: iota(2).as!double.slice.universal,
     };
-    optimizer.init();
-    assert(optimizer.nvars == 2);
-    optimizer.writeln;
+    cqps.initialize();
+    assert(cqps.nvars == 2);
+    cqps.writeln;
+    cqps.residuals();
+}
+
+
+
+/++
+ minimize:     0.5 x^T H x + f^T x
+ subject to:
+     sum_{i in I_k} x[i] == b[k]  for all k such that S[k] == 0 
+     sum_{i in I_k} x[i] <= b[k]  for all k such that S[k] == 1
+
+ where:
+   + H is a diagonal matrix (nvars x nvars)
+   + a, x are vectors (nvars)
+   + l, u are vectors (nvars) that can consists +-inf
+   + b is a scalar
+
+http://cmp.felk.cvut.cz/~xfrancv/libqp/html/
+ +/
+struct DiagonalSimplexQuadProgramSolver(Float=double) {
+    alias S(size_t n) = Slice!(Universal, [n], Float*);
+    alias Vec = S!1;
+    alias Mat = S!2;
+
+    Vec diagH, a, x, l, u, b;
 }

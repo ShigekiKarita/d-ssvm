@@ -23,25 +23,9 @@ mixin template StructuralSVM(Float=double) {
     Slice!(Contiguous, [2LU], Float*) weight;
     Float penalty;
 
-    this (size_t numFeature, size_t numClass, Float penalty = 1.0) {
-        this.numFeature = numFeature;
-        this.numClass = numClass;
-        this.weight = uniform!Float(numClass, numFeature);
-        this.weight.each!((ref a) => a = a * 0.01);
-        this.penalty = penalty;
-    }
-
     auto prior() {
         // Spherical Gaussian prior: Normal(0.0, 1.0) a.k.a. L2 regularizer
         return reduce!("a + b ^^ 2")(0.0, this.weight) / 2.0;
-    }
-
-    auto weightedFeature(X, Y)(X x, Y y) {
-        // TODO: use matrix-vector product http://docs.mir.dlang.io/latest/mir_glas_l2.html#gemv
-        auto f = this.feature(x, y);
-        return this.weight.pack!1.map!(
-            w => dotProduct(w, f)
-            ).sum;
     }
 
     auto riskOne(X, Y)(X x, Y y) {
@@ -55,31 +39,7 @@ mixin template StructuralSVM(Float=double) {
             + iota(xs.shape[0]).map!(i => riskOne(xs[i], ys[i])).sum;
     }
 
-    /* user defined parts
-    auto feature(X, Y)(X xs, Y y);
-    auto loss(Y)(Y yTrue, Y yExpect);
-    auto search(X, Y)(X x, Y y);
-    */
-}
-
-
-class BinarySVM(Float=double) {
-    import mir.ndslice;
-
-    mixin StructuralSVM!Float;
-
-    enum outputs = [-1L, 1L];
-
-    auto feature(X)(X xs, long y) {
-        assert(xs.shape == [this.numFeature]);
-        return xs.map!(x => x * y / 2.0);
-    }
-
-    auto loss(long yTrue, long yExpect) {
-        return yTrue == yExpect ? 0.0 : 1.0;
-    }
-
-    auto search(X)(X x, long y) {
+    auto search(X, Y)(X x, Y y) {
         return this.outputs.sliced
             .map!((yi) => this.loss(y, yi) + this.weightedFeature(x, yi));
     }
@@ -101,4 +61,83 @@ class BinarySVM(Float=double) {
         }
         return result / numBatch;
     }
+
+    /* user defined parts
+    auto feature(X, Y)(X xs, Y y);
+    auto loss(Y)(Y yTrue, Y yExpect);
+    auto search(X, Y)(X x, Y y);
+    */
+}
+
+
+class BinarySVM(Float=double) {
+    import mir.ndslice;
+
+    mixin StructuralSVM!Float; // TODO: use Base class
+
+    enum outputs = [-1L, 1L];
+
+    this (size_t numFeature, size_t numClass, Float penalty = 1.0) {
+        this.numFeature = numFeature;
+        this.numClass = numClass;
+        this.weight = uniform!Float(numClass, numFeature);
+        this.weight.each!((ref a) => a = a * 0.01);
+        this.penalty = penalty;
+    }
+
+    auto feature(X)(X xs, long y) {
+        assert(xs.shape == [this.numFeature]);
+        return xs.map!(x => x * y / 2.0);
+    }
+
+    auto weightedFeature(X, Y)(X x, Y y) {
+        // TODO: use matrix-vector product http://docs.mir.dlang.io/latest/mir_glas_l2.html#gemv
+        auto f = this.feature(x, y);
+        return this.weight.pack!1.map!(
+            w => dotProduct(w, f)
+            ).sum;
+    }
+
+    auto loss(long yTrue, long yExpect) {
+        return yTrue == yExpect ? 0.0 : 1.0;
+    }
+}
+
+
+class MultiSVM(Float=double) {
+    import mir.ndslice;
+
+    mixin StructuralSVM!Float;
+
+    const long[] outputs;
+
+    this (size_t numFeature, size_t numClass, Float penalty = 1.0) {
+        import std.array : array;
+        import std.range : iota;
+        this.numFeature = numFeature;
+        this.numClass = numClass;
+        this.weight = uniform!Float(numClass, numFeature * numClass);
+        this.weight.each!((ref a) => a = a * 0.01);
+        this.penalty = penalty;
+        this.outputs = cast(long[]) iota(numClass).array;
+    }
+
+    auto feature(X)(X xs, long y) {
+        assert(xs.shape == [this.numFeature]);
+        auto pre = y * this.numFeature;
+        auto post = (this.numClass - y) * this.numFeature;
+        return xs.universal.pad!"pre"(0, [pre]).pad!"post"(0, [post]);
+    }
+
+    auto loss(long yTrue, long yExpect) {
+        return yTrue == yExpect ? 0.0 : 1.0;
+    }
+
+    auto weightedFeature(X, Y)(X x, Y y) {
+        auto ws = this.weight[0 .. $, y * this.numFeature .. (y + 1) * this.numFeature];
+        return ws.pack!1.map!(
+            w => dotProduct(w, x)
+            ).sum;
+    }
+
 }
