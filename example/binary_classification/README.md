@@ -4,8 +4,10 @@ This example shows binary (odd or even digit) classification benchmarks comparin
 
 ```
 $ python main.py
-Score with pystruct subgradient ssvm: 0.857778 (took 11.426986 seconds)
-Score with sklearn and libsvm: 0.920000 (took 0.069885 seconds)
+Score with pystruct subgradient ssvm: 0.857778 (took 17.017000 seconds)
+Score with sklearn and libsvm: 0.920000 (took 0.149421 seconds)
 $ dub run --compiler=ldc2 --build=release-nobounds
-Score with d-ssvm subgradient ssvm: 0.891111 (took 0.145083 seconds)
+Score with d-ssvm subgradient ssvm: 0.924444 (took 0.152297 seconds)
 ```
+
+@Intel(R) Core(TM) i5-4210U CPU @ 1.70GHz

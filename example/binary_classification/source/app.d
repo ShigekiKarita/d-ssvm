@@ -5,6 +5,7 @@ import std.format : format;
 
 import mir.ndslice;
 import numir.io : loadNpy;
+import numir.random : RNG;
 
 import dssvm : BinarySVM, SubgradientTrainer;
 
@@ -16,7 +17,7 @@ auto addBias(S)(S s) {
 
 class Config {
     double lr = 0.1, C = 10.0;
-    size_t maxIter = 100, batchSize = 10;
+    size_t maxIter = 100, batchSize = 10, seed = 1;
 
     this(string[] args) {
         auto parsed = getopt(
@@ -24,7 +25,8 @@ class Config {
             "lr", "learning rate for SubgradientTrainer", &lr,
             "C", "weakness of SSVM gaussian prior (higher C results lower regularization)", &C,
             "batchSize", "mini batch size for SubgradientTrainer", &batchSize,
-            "maxIter", "maximum number of iterations for SubgradientTrainer", &maxIter
+            "maxIter", "maximum number of iterations for SubgradientTrainer", &maxIter,
+            "seed", "seed for random number generator", &seed
         );
         if (parsed.helpWanted) {
             defaultGetoptPrinter("d-ssvm example of binary classification for digits (odd/even)",
@@ -35,6 +37,8 @@ class Config {
 
 void main(string[] args) {
     auto config = new Config(args);
+    RNG.setSeed(config.seed);
+
     auto trainInput = loadNpy!(double, 2)("./train_data.npy").addBias;
     auto trainTarget = loadNpy!(long, 1)("./train_target.npy");
 

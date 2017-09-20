@@ -3,22 +3,9 @@ module dssvm.ranges;
 import mir.ndslice;
 
 
-// TODO: add to numir
-import mir.random.engine.xorshift;
-private auto gen = Xorshift(1);
-
-auto permutation(T...)(T t) {
-    import numir.core : arange;
-    import mir.ndslice : slice;
-    import mir.random.algorithm : shuffle;
-    auto a = arange(t).slice;
-    shuffle(gen, a);
-    return a;
-}
-
-
 struct MiniBatchRange {
     import numir.core : arange;
+    import numir.random : permutation;
     import mir.ndslice : Slice, Contiguous, slice;
     import mir.utility : min;
     import std.conv : to;
