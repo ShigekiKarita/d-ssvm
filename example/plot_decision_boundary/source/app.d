@@ -75,7 +75,7 @@ void main() {
         x[2] = 1.0;  // for bias
     }
 
-    auto model = new BinarySVM!double(3, 2, 10.0);
+    auto model = new BinarySVM!double(3, 2, 0.1);
     auto trainer = new SubgradientTrainer!(typeof(model))(model);
     trainer.fit(xs, ys);
     plotSurface(model, xs, ys);

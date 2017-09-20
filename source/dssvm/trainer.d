@@ -1,7 +1,7 @@
 module dssvm.trainer;
 
 import dssvm.model;
-import mir.ndslice : each, map, Slice, Universal;
+import mir.ndslice : each, map, Slice, Universal, zip;
 import dssvm.ranges : MiniBatchRange;
 import numir.core : maxIndex;
 
@@ -21,46 +21,38 @@ class SubgradientTrainer(alias SSVM) {
         this.batchSize = batchSize;
     }
 
-    auto grad(X, Y)(X xs, Y ys) {
+    auto update(X, Y)(X xs, Y ys, size_t totalSize) {
         auto numBatch = xs.shape[0];
-
-        auto sumDiff = numir.zeros!FloatT(this.model.numFeature);
+        auto sumDiff = numir.zeros!FloatT(this.model.numClass, this.model.numFeature);
         foreach (b; 0 .. numBatch) {
-            auto ye = this.model.search(xs[b], ys[b]).maxIndex;
-            auto xe = this.model.feature(xs[b], ye);
-            auto xy = this.model.feature(xs[b], ys[b]);
-            foreach (f; 0 .. this.model.numFeature) {
-                sumDiff[f] += xe[f] - xy[f];
-            }
+            // TODO: is it possible to `zip!true(xs.pack!1, ys)` ?
+            auto x = xs[b];
+            auto y = ys[b];
+            const yid = this.model.getTargetId(y);
+            const maxId = this.model.search(x, y).maxIndex;
+            auto e = this.model.outputs[maxId];
+            auto xe = this.model.feature(x, e);
+            auto xy = this.model.feature(x, y);
+            zip!true(sumDiff[yid], xe, xy).each!((z) {
+                    z[0] += z[1] - z[2];
+                });
         }
 
-        auto gradW = numir.zeros_like(this.model.weight);
-        foreach (f; 0 .. this.model.numFeature) {
-            foreach (c; 0.. this.model.numClass) {
-                gradW[c, f] = this.model.penalty * this.model.weight[c, f] + sumDiff[f];
-            }
-        }
-        return gradW;
-    }
-
-    void update(G)(G gradWeight) {
-        assert(this.model.weight.shape == gradWeight.shape);
-        foreach (f; 0 .. this.model.numFeature) {
-            foreach (c; 0.. this.model.numClass) {
-                this.model.weight[c, f] -= this.lr * gradWeight[c, f];
-            }
-        }
+        const denom = cast(double) xs.shape[0] * this.model.C;
+        zip!true(this.model.weight, sumDiff).each!((z) {
+                z[0] -= this.lr * (z[0] / denom + z[1]);
+            });
     }
 
     auto fit(X, Y)(X xs, Y ys) {
-        for (size_t i = 0; i < maxIter; ++i) {
-            foreach (batchIds; MiniBatchRange(xs.shape[0], this.batchSize)) {
+        const totalSize = ys.shape[0];
+        const miniBatchSize = this.batchSize == 0 ? totalSize : this.batchSize;
+        foreach (i; 0 .. maxIter) {
+            foreach (batchIds; MiniBatchRange(totalSize, miniBatchSize)) {
                 auto bxs = xs[batchIds];
                 auto bys = ys[batchIds];
-                auto gs = this.grad(bxs, bys);
-                this.update(gs);
+                this.update(bxs, bys, totalSize);
             }
-            // this.model.risk(xs, ys).writeln;
         }
     }
 }

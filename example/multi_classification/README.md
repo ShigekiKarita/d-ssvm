@@ -1,4 +1,4 @@
-# d-ssvm example: multi classification
+# [WIP] d-ssvm example: multi classification
 
 This example shows digits (0 to 9) classification benchmarks comparing linear subgradient SVM between pystruct, libsvm and d-ssvm.
 

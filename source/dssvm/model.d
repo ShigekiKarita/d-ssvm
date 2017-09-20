@@ -21,7 +21,7 @@ mixin template StructuralSVM(Float=double) {
 
     const size_t numFeature, numClass;
     Slice!(Contiguous, [2LU], Float*) weight;
-    Float penalty;
+    Float C;
 
     auto prior() {
         // Spherical Gaussian prior: Normal(0.0, 1.0) a.k.a. L2 regularizer
@@ -35,19 +35,13 @@ mixin template StructuralSVM(Float=double) {
 
     auto risk(X, Y)(X xs, Y ys) {
         assert(xs.shape[0] == ys.shape[0]);
-        return this.prior / this.penalty
+        return this.prior / this.C
             + iota(xs.shape[0]).map!(i => riskOne(xs[i], ys[i])).sum;
     }
 
     auto search(X, Y)(X x, Y y) {
         return this.outputs.sliced
-            .map!((yi) => this.loss(y, yi) + this.weightedFeature(x, yi));
-    }
-
-    auto predict(X)(X x) {
-        import std.math : exp;
-        auto prob = this.outputs.sliced.map!(i => this.weightedFeature(x, i).exp);
-        return prob[1] / (prob[0] + prob[1]);
+            .map!(yi => this.loss(y, yi) + this.weightedFeature(x, yi));
     }
 
     auto evaluate(X, Y)(X xs, Y ys) {
@@ -56,8 +50,8 @@ mixin template StructuralSVM(Float=double) {
 
         auto result = 0.0;
         foreach (b; 0 .. numBatch) {
-            auto ye = this.outputs.sliced.map!(i => this.weightedFeature(xs[b], i)).maxIndex;
-            result += this.loss(ys[b], ye);
+            auto maxId = this.outputs.sliced.map!(i => this.weightedFeature(xs[b], i)).maxIndex;
+            result += this.loss(ys[b], this.outputs[maxId]);
         }
         return result / numBatch;
     }
@@ -77,12 +71,12 @@ class BinarySVM(Float=double) {
 
     enum outputs = [-1L, 1L];
 
-    this (size_t numFeature, size_t numClass, Float penalty = 1.0) {
+    this (size_t numFeature, size_t numClass, Float C = 1.0) {
         this.numFeature = numFeature;
         this.numClass = numClass;
         this.weight = uniform!Float(numClass, numFeature);
         this.weight.each!((ref a) => a = a * 0.01);
-        this.penalty = penalty;
+        this.C = C;
     }
 
     auto feature(X)(X xs, long y) {
@@ -101,6 +95,16 @@ class BinarySVM(Float=double) {
     auto loss(long yTrue, long yExpect) {
         return yTrue == yExpect ? 0.0 : 1.0;
     }
+
+    auto predict(X)(X x) {
+        import std.math : exp;
+        auto prob = this.outputs.sliced.map!(i => this.weightedFeature(x, i).exp);
+        return prob[1] / (prob[0] + prob[1]);
+    }
+
+    auto getTargetId(long y) {
+        return y == -1 ? 0 : 1;
+    }
 }
 
 
@@ -111,14 +115,14 @@ class MultiSVM(Float=double) {
 
     const long[] outputs;
 
-    this (size_t numFeature, size_t numClass, Float penalty = 1.0) {
+    this (size_t numFeature, size_t numClass, Float C = 1.0) {
         import std.array : array;
         import std.range : iota;
         this.numFeature = numFeature;
         this.numClass = numClass;
         this.weight = uniform!Float(numClass, numFeature * numClass);
         this.weight.each!((ref a) => a = a * 0.01);
-        this.penalty = penalty;
+        this.C = C;
         this.outputs = cast(long[]) iota(numClass).array;
     }
 
@@ -140,4 +144,7 @@ class MultiSVM(Float=double) {
             ).sum;
     }
 
+    auto getTargetId(long y) {
+        return y;
+    }
 }
