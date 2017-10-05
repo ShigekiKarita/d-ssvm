@@ -37,7 +37,7 @@ class Config {
 
 void main(string[] args) {
     auto config = new Config(args);
-    RNG.setSeed(config.seed);
+    RNG.setSeed(cast(uint) config.seed);
 
     auto trainInput = loadNpy!(double, 2)("./train_data.npy").addBias;
     auto trainTarget = loadNpy!(long, 1)("./train_target.npy");

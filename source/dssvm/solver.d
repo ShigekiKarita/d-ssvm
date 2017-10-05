@@ -39,6 +39,17 @@ import mir.ndslice;
 import numir;
 
 
+/++
+
+ +/
+struct SuccessiveQuadProgramSolver(Float=double) {
+    
+}
+
+///
+unittest {
+    SuccessiveQuadProgramSolver!double sqp;
+}
 
 /++
  LinearProgramSolver
@@ -169,3 +180,46 @@ struct DiagonalSimplexQuadProgramSolver(Float=double) {
 
     Vec diagH, a, x, l, u, b;
 }
+
+
+
+
+/++
+ minimize:     0.5 x^T Q x + c^T x
+ subject to:   A x =< b
+
+ where Q is a positive definite symmetric matrix 
+
+ solve by the active constraint method.
+ (ja) http://www.fujilab.dnj.ynu.ac.jp/lecture/system5.pdf
+ +/
+struct PositiveDefiniteSymmetricQuadProgramSolver(Float=double) {
+    alias S(size_t n) = Slice!(Universal, [n], Float*);
+    alias Vec = S!1;
+    alias Mat = S!2;
+
+    Mat Q, A;
+    Vec c, b, x;
+    size_t[] activeIds;
+
+    private size_t nvars = 0;
+    private bool isInitialized = false;
+
+    auto iter() {
+        
+    }
+
+    auto toString() {
+        import std.format : format;
+        auto result =  typeof(this).stringof ~ " {\n";
+        foreach (i, s; this.tupleof) {
+            if (isSlice!(typeof(s))) {
+                result ~= "  %s: %s\n".format(this.tupleof[i].stringof, s);
+            }
+        }
+        result ~= "}";
+        return result;
+    }
+}
+
+
