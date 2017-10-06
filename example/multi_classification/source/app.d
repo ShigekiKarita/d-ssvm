@@ -53,29 +53,6 @@ void main(string[] args) {
         auto model = new MultiSVM!double(numFeature, numClass, config.C);
         // NOTE: pystruct example uses batch_size=None that means minibatch=len(X)
         // https://github.com/pystruct/pystruct/blob/master/pystruct/learners/subgradient_ssvm.py#L259
-        auto trainer = new OneSlackTrainer!(typeof(model))(model, 100, 1e-10);
-
-        StopWatch sw;
-        sw.start();
-        auto niter = trainer.fit(trainInput, trainTarget);
-        {
-            const accuracy = 1.0 - model.evaluate(trainInput, trainTarget);
-            const hns = sw.peek().hnsecs;
-            auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
-            "Train Score with d-ssvm 1-slack ssvm: %f (took %f seconds) %d iter".format(accuracy, elapsed, niter).writeln;
-        }
-        {
-            const accuracy = 1.0 - model.evaluate(testInput, testTarget);
-            const hns = sw.peek().hnsecs;
-            auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
-            "Score with d-ssvm 1-slack ssvm: %f (took %f seconds) %d iter".format(accuracy, elapsed, niter).writeln;
-        }
-    }
-
-    {
-        auto model = new MultiSVM!double(numFeature, numClass, config.C);
-        // NOTE: pystruct example uses batch_size=None that means minibatch=len(X)
-        // https://github.com/pystruct/pystruct/blob/master/pystruct/learners/subgradient_ssvm.py#L259
         auto trainer = new SubgradientTrainer!(typeof(model))(model, config.lr, config.maxIter, config.batchSize);
 
         StopWatch sw;
@@ -94,6 +71,32 @@ void main(string[] args) {
             "Score with d-ssvm subgradient ssvm: %f (took %f seconds)".format(accuracy, elapsed).writeln;
         }
     }
+
+
+    /* WIP
+    {
+        auto model = new MultiSVM!double(numFeature, numClass, config.C);
+        // NOTE: pystruct example uses batch_size=None that means minibatch=len(X)
+        // https://github.com/pystruct/pystruct/blob/master/pystruct/learners/subgradient_ssvm.py#L259
+        auto trainer = new OneSlackTrainer!(typeof(model))(model, 100, 1e-10);
+
+        StopWatch sw;
+        sw.start();
+        auto niter = trainer.fit(trainInput, trainTarget);
+        {
+            const accuracy = 1.0 - model.evaluate(trainInput, trainTarget);
+            const hns = sw.peek().hnsecs;
+            auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
+            "Train Score with d-ssvm 1-slack ssvm: %f (took %f seconds) %d iter".format(accuracy, elapsed, niter).writeln;
+        }
+        {
+            const accuracy = 1.0 - model.evaluate(testInput, testTarget);
+            const hns = sw.peek().hnsecs;
+            auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
+            "Score with d-ssvm 1-slack ssvm: %f (took %f seconds) %d iter".format(accuracy, elapsed, niter).writeln;
+        }
+    }
+    */
 
 
 }
