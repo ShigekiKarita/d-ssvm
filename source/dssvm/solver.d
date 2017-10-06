@@ -185,27 +185,49 @@ struct DiagonalSimplexQuadProgramSolver(Float=double) {
 
 
 /++
- minimize:     0.5 x^T Q x + c^T x
- subject to:   A x =< b
+ used in SSVM QP in 1-slack cutting place algorithm
 
- where Q is a positive definite symmetric matrix 
+ min_{w,s} 0.5 ||w||^2 + c * s
+ s.t. a^T w + s >= b, s >= 0
+
+ where
+ - w in R^M: weight vector of SSVM
+ - s in R^1: a slack variable
+ - c in R^1: a SSVM hyper parameter for regularization
+ - a in R^M: average feature-diff vectors in a working set
+ - b in R^1: average loss in a working set
 
  solve by the active constraint method.
  (ja) http://www.fujilab.dnj.ynu.ac.jp/lecture/system5.pdf
+
+
+ active constraint algorithm
+
+ 1. set init solution in a constraint like
+
+   s = 0, w = (b - s) a^-1
+
+ 2. calc solution of active constraints like
+
+   new_w = c * a
+   new_s = b - a^T new_w
+
+
  +/
-struct PositiveDefiniteSymmetricQuadProgramSolver(Float=double) {
+struct SSVMQuadProgramSolver(Float=double) {
     alias S(size_t n) = Slice!(Universal, [n], Float*);
     alias Vec = S!1;
     alias Mat = S!2;
 
-    Mat Q, A;
-    Vec c, b, x;
-    size_t[] activeIds;
+    // Parameters
+    Vec a;
+    Float c, b;
 
-    private size_t nvars = 0;
-    private bool isInitialized = false;
+    // Solutions
+    Vec _w;
+    Float _s;
 
-    auto iter() {
+    auto solve() {
         
     }
 

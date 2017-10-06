@@ -7,7 +7,7 @@ import mir.ndslice;
 import numir.io : loadNpy;
 import numir.random : RNG;
 
-import dssvm : BinarySVM, SubgradientTrainer;
+import dssvm : BinarySVM, SubgradientTrainer, OneSlackTrainer;
 
 
 auto addBias(S)(S s) {
@@ -17,7 +17,7 @@ auto addBias(S)(S s) {
 
 class Config {
     double lr = 0.1, C = 10.0;
-    size_t maxIter = 100, batchSize = 10, seed = 1;
+    size_t maxIter = 100, batchSize = 10, seed = 777;
 
     this(string[] args) {
         auto parsed = getopt(
@@ -47,16 +47,30 @@ void main(string[] args) {
 
     const n_sample = trainInput.shape[0];
     const numFeature = trainInput.shape[1];
-    const numClass = 2;
 
-    auto model = new BinarySVM!double(numFeature, numClass, config.C);
-    auto trainer = new SubgradientTrainer!(typeof(model))(model, config.lr, config.maxIter, config.batchSize);
+    {
+        auto model = new BinarySVM!double(numFeature, config.C);
+        auto trainer = new OneSlackTrainer!(typeof(model))(model, 100, 1e-10);
 
-    StopWatch sw;
-    sw.start();
-    trainer.fit(trainInput, trainTarget);
-    const accuracy = 1.0 - model.evaluate(testInput, testTarget);
-    const hns = sw.peek().hnsecs;
-    auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
-    "Score with d-ssvm subgradient ssvm: %f (took %f seconds)".format(accuracy, elapsed).writeln;
+        StopWatch sw;
+        sw.start();
+        auto niter = trainer.fit(trainInput, trainTarget);
+        const accuracy = 1.0 - model.evaluate(testInput, testTarget);
+        const hns = sw.peek().hnsecs;
+        auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
+        "Score with d-ssvm 1-slack ssvm: %f (took %f seconds) with %d iter".format(accuracy, elapsed, niter).writeln;
+    }
+
+    {
+        auto model = new BinarySVM!double(numFeature, config.C);
+        auto trainer = new SubgradientTrainer!(typeof(model))(model, config.lr, config.maxIter, config.batchSize);
+
+        StopWatch sw;
+        sw.start();
+        trainer.fit(trainInput, trainTarget);
+        const accuracy = 1.0 - model.evaluate(testInput, testTarget);
+        const hns = sw.peek().hnsecs;
+        auto elapsed = cast(double) hns / 1e7;  // 1 hnsecs = 100 nsecs = 1e-7 secs
+        "Score with d-ssvm subgradient ssvm: %f (took %f seconds)".format(accuracy, elapsed).writeln;
+    }
 }

@@ -20,7 +20,7 @@ mixin template StructuralSVM(Float=double) {
     import std.algorithm : sum;
 
     const size_t numFeature, numClass;
-    Slice!(Contiguous, [2LU], Float*) weight;
+    Slice!(Contiguous, [1LU], Float*) weight;
     Float C;
 
     auto prior() {
@@ -71,10 +71,10 @@ class BinarySVM(Float=double) {
 
     enum outputs = [-1L, 1L];
 
-    this (size_t numFeature, size_t numClass, Float C = 1.0) {
+    this (size_t numFeature, Float C = 1.0) {
         this.numFeature = numFeature;
-        this.numClass = numClass;
-        this.weight = uniform!Float(numClass, numFeature);
+        this.numClass = 2;
+        this.weight = uniform!Float(numFeature).slice;
         this.weight.each!((ref a) => a = a * 0.01);
         this.C = C;
     }
@@ -85,11 +85,8 @@ class BinarySVM(Float=double) {
     }
 
     auto weightedFeature(X, Y)(X x, Y y) {
-        // TODO: use matrix-vector product http://docs.mir.dlang.io/latest/mir_glas_l2.html#gemv
         auto f = this.feature(x, y);
-        return this.weight.pack!1.map!(
-            w => dotProduct(w, f)
-            ).sum;
+        return this.weight.dotProduct(f);
     }
 
     auto loss(long yTrue, long yExpect) {
@@ -120,7 +117,7 @@ class MultiSVM(Float=double) {
         import std.range : iota;
         this.numFeature = numFeature;
         this.numClass = numClass;
-        this.weight = uniform!Float(numClass, numFeature * numClass);
+        this.weight = uniform!Float(numFeature * numClass).slice;
         this.weight.each!((ref a) => a = a * 0.01);
         this.C = C;
         this.outputs = cast(long[]) iota(numClass).array;
@@ -138,13 +135,12 @@ class MultiSVM(Float=double) {
     }
 
     auto weightedFeature(X, Y)(X x, Y y) {
-        auto ws = this.weight[0 .. $, y * this.numFeature .. (y + 1) * this.numFeature];
-        return ws.pack!1.map!(
-            w => dotProduct(w, x)
-            ).sum;
+        auto ws = this.weight[y * this.numFeature .. (y + 1) * this.numFeature];
+        return ws.dotProduct(x);
     }
 
     auto getTargetId(long y) {
         return y;
     }
 }
+

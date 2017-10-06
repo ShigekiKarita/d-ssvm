@@ -60,7 +60,7 @@ void main() {
 
     auto nsamples = 200;
     auto ndim = 2;
-    auto xs = normal(nsamples, ndim + 1); // for bias
+    auto xs = normal(nsamples, ndim + 1).slice; // for bias
     // TODO: add to numir.random
     auto gen = Random(unpredictableSeed);
     auto rv = BernoulliVariable!double(0.5);
@@ -75,7 +75,7 @@ void main() {
         x[2] = 1.0;  // for bias
     }
 
-    auto model = new BinarySVM!double(3, 2, 0.1);
+    auto model = new BinarySVM!double(3, 0.1);
     auto trainer = new SubgradientTrainer!(typeof(model))(model);
     trainer.fit(xs, ys);
     plotSurface(model, xs, ys);
