@@ -1,6 +1,5 @@
 module dssvm.model;
 
-import std.algorithm : sum;
 import std.stdio;
 
 import mir.ndslice : each, map, Slice, Universal;
@@ -13,19 +12,17 @@ import numir.random : uniform;
 mixin template StructuralSVM(Float=double) {
     alias FloatT = Float;
 
-    version(LDC) { import ldc.intrinsics : fmax = llvm_maxnum; }
-    else { import std.math : fmax; }
+    import mir.math.common: fmax, sqrt;
+    import mir.math.sum : sum;
     import mir.ndslice;
-    import std.numeric : dotProduct;
-    import std.algorithm : sum;
 
     const size_t numFeature, numClass;
-    Slice!(Contiguous, [1LU], Float*) weight;
+    ContiguousVector!Float weight;
     Float C;
 
     auto prior() {
         // Spherical Gaussian prior: Normal(0.0, 1.0) a.k.a. L2 regularizer
-        return reduce!("a + b ^^ 2")(0.0, this.weight) / 2.0;
+        return sum!"fast"(this.weight * this.weight) / 2;
     }
 
     auto riskOne(X, Y)(X x, Y y) {
@@ -34,9 +31,9 @@ mixin template StructuralSVM(Float=double) {
     }
 
     auto risk(X, Y)(X xs, Y ys) {
-        assert(xs.shape[0] == ys.shape[0]);
+        assert(xs.length == ys.length);
         return this.prior / this.C
-            + iota(xs.shape[0]).map!(i => riskOne(xs[i], ys[i])).sum;
+            + zip!(xs.ipack!1, ys.ipack!1).map((x, y) => riskOne(x, y)).sum;
     }
 
     auto search(X, Y)(X x, Y y) {
@@ -45,8 +42,8 @@ mixin template StructuralSVM(Float=double) {
     }
 
     auto evaluate(X, Y)(X xs, Y ys) {
-        assert(xs.shape[0] == ys.shape[0]);
-        auto numBatch = xs.shape[0];
+        assert(xs.length == ys.length);
+        auto numBatch = xs.length;
 
         auto result = 0.0;
         foreach (b; 0 .. numBatch) {
@@ -75,18 +72,20 @@ class BinarySVM(Float=double) {
         this.numFeature = numFeature;
         this.numClass = 2;
         this.weight = uniform!Float(numFeature).slice;
-        this.weight.each!((ref a) => a = a * 0.01);
+        this.weight[] *= Float(0.01);
         this.C = C;
     }
 
-    auto feature(X)(X xs, long y) {
-        assert(xs.shape == [this.numFeature]);
-        return xs.map!(x => x * y / 2.0);
+    auto feature(X)(X xs, long y)
+        if (isVector!X)
+    {
+        assert(xs.length == this.numFeature);
+        return xs * (y / Float(2));
     }
 
     auto weightedFeature(X, Y)(X x, Y y) {
         auto f = this.feature(x, y);
-        return this.weight.dotProduct(f);
+        return sum!"fast"(this.weight * f);
     }
 
     auto loss(long yTrue, long yExpect) {
@@ -94,7 +93,7 @@ class BinarySVM(Float=double) {
     }
 
     auto predict(X)(X x) {
-        import std.math : exp;
+        import mir.math.common : exp;
         auto prob = this.outputs.sliced.map!(i => this.weightedFeature(x, i).exp);
         return prob[1] / (prob[0] + prob[1]);
     }
@@ -114,13 +113,12 @@ class MultiSVM(Float=double) {
 
     this (size_t numFeature, size_t numClass, Float C = 1.0) {
         import std.array : array;
-        import std.range : iota;
         this.numFeature = numFeature;
         this.numClass = numClass;
         this.weight = uniform!Float(numFeature * numClass).slice;
         this.weight.each!((ref a) => a = a * 0.01);
         this.C = C;
-        this.outputs = cast(long[]) iota(numClass).array;
+        this.outputs = cast(long[]) iota!long(numClass).array;
     }
 
     auto feature(X)(X xs, long y) {
@@ -136,7 +134,7 @@ class MultiSVM(Float=double) {
 
     auto weightedFeature(X, Y)(X x, Y y) {
         auto ws = this.weight[y * this.numFeature .. (y + 1) * this.numFeature];
-        return ws.dotProduct(x);
+        return sum!"fast"(ws * x);
     }
 
     auto getTargetId(long y) {
