@@ -4,7 +4,7 @@ WIP
 
 dlang (and mir) implementation of structural SVM (SSVM)
 
-see [examples](/examples) for information.
+see [examples](/example) for information.
 
 ### DONE
 
